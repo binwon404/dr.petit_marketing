@@ -458,6 +458,7 @@
         </div>
         ${canEdit ? `
           <div class="dlg-actions">
+            ${canSettings ? `<button type="button" class="link-btn quiet del-ad" data-act="del-ad" data-id="${ad.id}">${T('광고 삭제')}</button>` : ''}
             <button type="button" class="btn ghost" data-act="edit-ad" data-id="${ad.id}">${T('광고 정보 수정')}</button>
             <button type="button" class="btn" data-act="perf" data-id="${ad.id}">${T('성과 입력')}</button>
           </div>` : ''}
@@ -861,6 +862,24 @@
     if (ok) { toast(T('카드를 삭제했어요')); renderSettings(); }
   }
 
+  // 광고 삭제는 관리자만 (권한은 DB 규칙이 막고, 여기서는 버튼을 관리자에게만 보여 줌). 성과와 이미지도 함께 지워짐
+  async function deleteAd(id) {
+    const ad = canSettings ? findAd(id) : null;
+    if (!ad) return;
+    const ask = `${T('"{name}" 광고를 삭제할까요?', { name: ad.name })}\n${T('입력한 성과 {n}주치와 이미지도 함께 지워지고, 되돌릴 수 없어요.', { n: ad.perf.length })}`;
+    if (!confirm(ask)) return;
+    const ok = await run(null, async () => {
+      // 이미지는 광고가 남아 있을 때만 지울 수 있어서 먼저 지움
+      if (ad.imagePath) await sb.storage.from(BUCKET).remove([ad.imagePath]);
+      must(await sb.from('ads').delete().eq('id', id));
+      await reload();
+    }, T('광고를 삭제하지 못했어요. 잠시 뒤 다시 시도해 주세요.'));
+    if (!ok) return;
+    dlg.close();
+    toast(T('광고를 삭제했어요'));
+    route();
+  }
+
   async function submitPin(f) {
     const { login, name } = f.dataset;
     const pin = f.elements.pin.value;
@@ -936,6 +955,7 @@
     else if (act === 'perf') perfForm(id);
     else if (act === 'close') dlg.close();
     else if (act === 'del-card') deleteCard(id);
+    else if (act === 'del-ad') deleteAd(id);
     else if (act === 'filter-grade') { filters = { team: '', media: '', grade: el.dataset.grade }; go('ads'); }
     else if (act === 'filter-team') { filters = { team: el.dataset.team, media: '', grade: '' }; go('ads'); }
     else if (act === 'clear-filters') { filters = { team: '', media: '', grade: '' }; renderAds(); }

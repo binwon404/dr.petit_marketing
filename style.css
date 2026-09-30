@@ -267,7 +267,8 @@ td .bar { height: 6px; margin: 6px 0 4px; max-width: 180px; }
 .dlg-body { display: flex; flex-direction: column; gap: 18px; padding: 24px 28px 28px; }
 .dlg-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 .dlg-head h2 { font-size: 20px; margin-top: 2px; }
-.dlg-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.dlg-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+.dlg-actions .del-ad { margin-right: auto; }
 .grade-box { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px 16px; border-radius: 12px; }
 .grade-box p { font-size: 14px; }
 .grade-best { background: var(--best-bg); }
