@@ -1,0 +1,7 @@
+.DS_Store
+.env
+.env.*
+
+# 내부용 — 공개 저장소에 올리지 않음
+CLAUDE.md
+구조_가이드.html
