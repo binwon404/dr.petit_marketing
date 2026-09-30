@@ -355,7 +355,9 @@ td .bar { height: 6px; margin: 6px 0 4px; max-width: 180px; }
   display: flex; flex-direction: column; gap: 20px;
   padding: 32px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
 }
-.login-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+/* 제목이 길어 한 줄에 안 들어가면 언어 선택·가이드가 제목 윗줄로 올라감 */
+.login-top { display: flex; flex-wrap: wrap-reverse; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.login-tools { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
 #login-form { display: flex; flex-direction: column; gap: 16px; }
 .acct-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .acct {
