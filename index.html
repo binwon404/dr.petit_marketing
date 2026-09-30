@@ -9,20 +9,24 @@
 </head>
 <body class="login-body">
   <main class="login-card">
-    <div>
-      <p class="eyebrow">마케팅 관리보드</p>
-      <h1>어느 계정으로 들어갈까요?</h1>
+    <div class="login-top">
+      <div>
+        <p class="eyebrow" data-i18n>마케팅 관리보드</p>
+        <h1 data-i18n>어느 계정으로 들어갈까요?</h1>
+      </div>
+      <select class="lang-select" data-lang-select aria-label="언어 / 言語 / 语言 / Language"></select>
     </div>
     <form id="login-form">
-      <div class="acct-list" id="acct-list"><p class="empty">계정 목록을 불러오는 중이에요</p></div>
-      <label class="field"><span>비밀번호 (숫자 4자리)</span><input type="password" id="pw" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="숫자 4자리"></label>
+      <div class="acct-list" id="acct-list"><p class="empty" data-i18n>계정 목록을 불러오는 중이에요</p></div>
+      <label class="field"><span data-i18n>비밀번호 (숫자 4자리)</span><input type="password" id="pw" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="숫자 4자리" data-i18n-ph></label>
       <p class="note" id="login-error" role="alert" hidden></p>
-      <button class="btn block" id="login-btn">들어가기</button>
+      <button class="btn block" id="login-btn" data-i18n>들어가기</button>
     </form>
-    <p class="hint">비밀번호를 10번 틀리면 10분 동안 잠겨요. 비밀번호는 관리자에게 물어봐 주세요.</p>
+    <p class="hint" data-i18n>비밀번호를 10번 틀리면 10분 동안 잠겨요. 비밀번호는 관리자에게 물어봐 주세요.</p>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js"></script>
   <script src="js/config.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="js/login.js"></script>
 </body>
 </html>

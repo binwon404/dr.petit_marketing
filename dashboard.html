@@ -9,28 +9,30 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#home">마케팅 관리보드</a>
-    <nav class="nav" aria-label="메뉴">
-      <a href="#home" data-page="home">홈</a>
-      <a href="#ads" data-page="ads">광고 목록</a>
-      <a href="#logs" data-page="logs" data-need="logs" hidden>수정 이력</a>
-      <a href="#settings" data-page="settings" data-need="settings" hidden>설정</a>
+    <a class="brand" href="#home" data-i18n>마케팅 관리보드</a>
+    <nav class="nav" aria-label="메뉴" data-i18n-aria>
+      <a href="#home" data-page="home" data-i18n>홈</a>
+      <a href="#ads" data-page="ads" data-i18n>광고 목록</a>
+      <a href="#logs" data-page="logs" data-need="logs" hidden data-i18n>수정 이력</a>
+      <a href="#settings" data-page="settings" data-need="settings" hidden data-i18n>설정</a>
     </nav>
     <div class="account">
-      <a class="guide-link" href="guide.html" target="_blank" rel="noopener">가이드</a>
+      <select class="lang-select" data-lang-select aria-label="언어 / 言語 / 语言 / Language"></select>
+      <a class="guide-link" href="guide.html" target="_blank" rel="noopener" data-i18n>가이드</a>
       <span id="account-name"></span>
       <span id="account-tag" class="tag" hidden></span>
-      <a class="logout" id="logout" href="index.html">로그아웃</a>
+      <a class="logout" id="logout" href="index.html" data-i18n>로그아웃</a>
     </div>
   </header>
 
-  <main id="main" class="main"><p class="empty">불러오는 중이에요</p></main>
+  <main id="main" class="main"><p class="empty" data-i18n>불러오는 중이에요</p></main>
 
   <dialog id="dlg" class="dlg"></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js"></script>
   <script src="js/config.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
