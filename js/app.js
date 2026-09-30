@@ -472,7 +472,7 @@
     if (id && !ad) return;
     const v = ad ?? {
       team: isTeam ? account.team : state.teams[0].id, media: 'meta', name: '', objective: 'sales', status: 'running',
-      start: today(), end: '', currency: 'KRW', daily: '', monthly: '', card: state.cards[0]?.id ?? '', image: '', imagePath: '',
+      start: today(), end: '', currency: 'KRW', daily: '', monthly: '', card: '', image: '', imagePath: '',
     };
     pendingImage = null;
     formImage = v.image;
