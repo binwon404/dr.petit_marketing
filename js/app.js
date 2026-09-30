@@ -796,7 +796,7 @@
 
       <form id="rate-form" class="panel">
         <div class="panel-head"><h2>${T('원화 환산 환율')}</h2></div>
-        <p class="hint">${T('예시 값이에요. 한 달에 한 번 정도 실제 환율로 바꿔 주세요.')}</p>
+        <p class="hint">${T('매주 월요일 아침에 실제 환율로 자동으로 바뀌어요. 여기서 바꾸면 다음 자동 갱신 전까지만 적용돼요.')}</p>
         <div class="grid3">${['USD', 'JPY', 'CNY'].map((c) => `
           <label class="field"><span>1 ${c}</span><div class="input-unit"><input type="number" name="${c}" min="0.01" step="0.01" required value="${s.rates[c]}"><span>${T('원')}</span></div></label>`).join('')}</div>
         <div class="form-foot"><button class="btn">${T('환율 저장')}</button></div>

@@ -244,7 +244,7 @@
     '판단 보류 클릭 수': ['判定保留のクリック数', '暂不判定的点击数', 'Clicks needed before rating'],
     '기준 저장': ['基準を保存', '保存标准', 'Save standards'],
     '원화 환산 환율': ['ウォン換算レート', '折合韩元汇率', 'Exchange rates to KRW'],
-    '예시 값이에요. 한 달에 한 번 정도 실제 환율로 바꿔 주세요.': ['例の値です。月に1回くらい実際のレートに変えてください。', '这是示例数值。请大约每月一次改成实际汇率。', 'These are example values. Update them to real rates about once a month.'],
+    '매주 월요일 아침에 실제 환율로 자동으로 바뀌어요. 여기서 바꾸면 다음 자동 갱신 전까지만 적용돼요.': ['毎週月曜日の朝に、実際のレートへ自動で変わります。ここで変えても、次の自動更新までしか反映されません。', '每周一早上会自动更新为实际汇率。在这里修改的值只在下次自动更新前有效。', 'These update automatically to the real rate every Monday morning. A change made here only lasts until the next automatic update.'],
     '원': ['ウォン', '韩元', 'KRW'],
     '환율 저장': ['レートを保存', '保存汇率', 'Save rates'],
     '카드 번호 전체는 저장하지 않아요. 별칭과 끝 4자리만 적어 주세요.': ['カード番号の全部は保存しません。呼び名と下4桁だけ書いてください。', '不保存完整卡号。只填写别名和末4位。', 'The full card number is never stored. Enter a nickname and the last 4 digits only.'],
