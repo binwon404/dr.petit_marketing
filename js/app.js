@@ -71,6 +71,11 @@
   const md = (iso) => { const [, m, d] = iso.split('-'); return `${Number(m)}/${Number(d)}`; };
   const weekLabel = (start) => `${md(start)}~${md(addDays(start, 6))}`;
   const monthText = (ym) => { const [y, m] = ym.split('-'); return `${y}년 ${Number(m)}월`; };
+  function shiftMonth(ym, n) {
+    const [y, m] = ym.split('-').map(Number);
+    const d = new Date(y, m - 1 + n, 1);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+  }
   const monthLabel = () => monthText(state.reportMonth);
   const monthWord = () => (state.reportMonth === thisMonth() ? '이번 달' : `${Number(state.reportMonth.split('-')[1])}월`);
   const stampLabel = (at) => { const [d, t] = at.split('T'); return `${md(d)} ${t}`; };
@@ -123,9 +128,14 @@
         conversions: Number(p.conversions), revenue: Number(p.revenue), author: p.author,
       });
     });
-    // 볼 수 있는 달: 성과가 입력된 달 + 이번 달. 이번 달 성과가 아직 없으면 가장 최근 달부터 보여 줌
+    // 볼 수 있는 달: 가장 오래된 광고·성과가 있는 달부터 이번 달까지 전부 (광고 시작일 기준으로는 최대 24개월 전까지)
+    // 처음 보여 주는 달: 이번 달 성과가 아직 없으면 성과가 있는 가장 최근 달
     const dataMonths = [...new Set(perf.map((p) => p.week_start.slice(0, 7)))].sort().reverse();
-    const months = [...new Set([thisMonth(), ...dataMonths])].sort().reverse();
+    const oldestAd = ads.map((a) => a.start_date.slice(0, 7)).sort()[0] ?? thisMonth();
+    const floor = shiftMonth(thisMonth(), -24);
+    const first = [thisMonth(), ...dataMonths, oldestAd < floor ? floor : oldestAd].sort()[0];
+    const months = [];
+    for (let m = [thisMonth(), ...dataMonths].sort().at(-1); m >= first; m = shiftMonth(m, -1)) months.push(m);
     const reportMonth = months.includes(pickedMonth) ? pickedMonth
       : dataMonths.includes(thisMonth()) ? thisMonth() : dataMonths[0] ?? thisMonth();
 
@@ -218,7 +228,10 @@
   }
 
   // 팀 간 차단은 Supabase 권한 규칙(RLS)이 함 — 여기 필터는 화면 정리용
-  const visibleAds = () => (isTeam ? state.ads.filter((a) => a.team === account.team) : state.ads);
+  const teamAds = () => (isTeam ? state.ads.filter((a) => a.team === account.team) : state.ads);
+  // 지난달을 볼 때는 그 달에 이미 시작한 광고만 보여 줌 (이번 달 보기에서는 등록된 광고 전부)
+  const existedIn = (ad) => state.reportMonth >= thisMonth() || ad.start.slice(0, 7) <= state.reportMonth;
+  const visibleAds = () => teamAds().filter(existedIn);
   function findAd(id) {
     const ad = state.ads.find((a) => a.id === id);
     return ad && (!isTeam || ad.team === account.team) ? ad : null;
@@ -242,8 +255,7 @@
   const teamOpts = () => state.teams.map((t) => [t.id, t.name]);
   const mediaOpts = () => state.media.map((m) => [m.id, m.name]);
   const newAdBtn = () => (canEdit ? '<button class="btn" data-act="new-ad">+ 광고 등록</button>' : '');
-  const monthSelect = () => (state.months.length > 1
-    ? `<select id="f-month" aria-label="볼 달">${opts(state.months.map((m) => [m, monthText(m)]), state.reportMonth)}</select>` : '');
+  const monthSelect = () => `<select id="f-month" aria-label="볼 달">${opts(state.months.map((m) => [m, monthText(m)]), state.reportMonth)}</select>`;
   const headActions = () => `<div class="head-actions">${monthSelect()}${newAdBtn()}</div>`;
   const thumb = (ad) => (ad.image ? `<img class="thumb" src="${esc(ad.image)}" alt="">` : '<span class="thumb none">없음</span>');
 
@@ -337,7 +349,7 @@
 
   function reminderPanel() {
     const wk = state.latestWeek;
-    const missing = visibleAds().filter((a) => a.status === 'running' && a.start <= addDays(wk, 6) && !a.perf.some((p) => p.start === wk));
+    const missing = teamAds().filter((a) => a.status === 'running' && a.start <= addDays(wk, 6) && !a.perf.some((p) => p.start === wk));
     return `
       <section class="panel list">
         <div class="panel-head"><h2>지난주(${weekLabel(wk)}) 성과 입력</h2><span class="count">${missing.length ? `${missing.length}건 남음` : '완료'}</span></div>
@@ -548,6 +560,8 @@
         if (image && old.imagePath) await sb.storage.from(BUCKET).remove([old.imagePath]);
       } else {
         must(await sb.from('ads').insert({ id, ...row, image_path: path, updated_by: who }));
+        // 지난달을 보고 있었다면 새 광고가 안 보이므로 이번 달로 돌아옴
+        pickedMonth = thisMonth();
         try {
           await uploadImage(path, image);
         } catch (e) {
