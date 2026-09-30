@@ -30,6 +30,7 @@
   let currentPage = 'home';
   let saving = 0;
   let filters = { team: '', media: '', grade: '' };
+  let showEnded = false;
   let logFilter = '';
   let pendingImage = null;
   let formImage = '';
@@ -222,8 +223,11 @@
     const ad = state.ads.find((a) => a.id === id);
     return ad && (!isTeam || ad.team === account.team) ? ad : null;
   }
+  // 종료된 광고: 목록과 판정 개수에서는 빼고, 예산·광고비는 종료한 달까지만 셈
+  const isEnded = (ad) => ad.status === 'ended';
+  const inBudget = (ad) => !isEnded(ad) || !ad.end || ad.end.slice(0, 7) >= state.reportMonth;
   function budgetOf(ads) {
-    return ads.reduce((s, ad) => {
+    return ads.filter(inBudget).reduce((s, ad) => {
       s.budget += krw(ad.monthly, ad.currency);
       s.spend += krw(sumPerf(monthList(ad)).spend, ad.currency);
       return s;
@@ -256,7 +260,7 @@
   // ---------- 홈 ----------
   function renderHome() {
     const ads = visibleAds();
-    const graded = ads.map((ad) => ({ ad, g: grade(ad) }));
+    const graded = ads.filter((ad) => !isEnded(ad)).map((ad) => ({ ad, g: grade(ad) }));
     const counts = Object.fromEntries(GRADE_KEYS.map((k) => [k, 0]));
     graded.forEach(({ g }) => { counts[g.key] += 1; });
     const bad = graded.filter(({ g }) => g.key === 'bad');
@@ -273,7 +277,7 @@
         <div class="budget-top"><span class="label">월 예산 사용</span><span class="budget-pct">${Math.round(usage * 100)}%</span></div>
         <div class="budget-nums"><strong>${won(tot.spend)}</strong><span> / ${won(tot.budget)}</span></div>
         ${bar(usage)}
-        <p class="hint">남은 예산 ${won(Math.max(tot.budget - tot.spend, 0))}${ads.some((a) => a.currency !== 'KRW') ? ' · 해외 광고비는 원화로 환산했어요' : ''}</p>
+        <p class="hint">남은 예산 ${won(Math.max(tot.budget - tot.spend, 0))}${ads.some((a) => inBudget(a) && a.currency !== 'KRW') ? ' · 해외 광고비는 원화로 환산했어요' : ''}</p>
       </section>
 
       <section class="signals" aria-label="판정별 광고 수">
@@ -292,7 +296,7 @@
           </button></li>`).join('')}</ul>` : '<p class="empty">교체가 필요한 광고가 없어요</p>'}
       </section>
 
-      ${isTeam ? reminderPanel() : teamCards(graded) + teamPayCards(ads)}`;
+      ${isTeam ? reminderPanel() : teamCards(graded, ads) + teamPayCards(ads)}`;
   }
 
   // 대표·관리자용: 팀마다 종료되지 않은 광고에 연결된 결제 카드
@@ -312,13 +316,13 @@
       </section>`;
   }
 
-  function teamCards(graded) {
+  function teamCards(graded, ads) {
     return `
       <section>
         <div class="section-head"><h2>팀별 현황</h2></div>
         <div class="team-grid">${state.teams.map((t) => {
           const list = graded.filter(({ ad }) => ad.team === t.id);
-          const b = budgetOf(list.map(({ ad }) => ad));
+          const b = budgetOf(ads.filter((ad) => ad.team === t.id));
           const c = Object.fromEntries(GRADE_KEYS.map((k) => [k, list.filter(({ g }) => g.key === k).length]));
           return `
             <button class="team-card" data-act="filter-team" data-team="${t.id}">
@@ -352,8 +356,12 @@
     if (filters.team) rows = rows.filter(({ ad }) => ad.team === filters.team);
     if (filters.media) rows = rows.filter(({ ad }) => ad.media === filters.media);
     if (filters.grade) rows = rows.filter(({ g }) => g.key === filters.grade);
+    const endedCount = rows.filter(({ ad }) => isEnded(ad)).length;
+    if (!showEnded) rows = rows.filter(({ ad }) => !isEnded(ad));
     rows.sort((a, b) => order[a.g.key] - order[b.g.key]);
     const hasFilter = filters.team || filters.media || filters.grade;
+    const emptyText = endedCount && !showEnded ? '진행 중인 광고가 없어요. "종료 광고 보기"를 켜면 끝난 광고가 나와요'
+      : hasFilter ? '조건에 맞는 광고가 없어요' : '아직 등록된 광고가 없어요';
 
     main.innerHTML = `
       <div class="page-head">
@@ -365,6 +373,7 @@
         ${filterSelect('f-media', '모든 매체', mediaOpts(), filters.media)}
         ${filterSelect('f-grade', '모든 판정', GRADE_KEYS.map((k) => [k, GRADES[k].label]), filters.grade)}
         ${hasFilter ? '<button class="link-btn" data-act="clear-filters">필터 지우기</button>' : ''}
+        ${endedCount || showEnded ? `<label class="check"><input type="checkbox" id="f-ended"${showEnded ? ' checked' : ''}>종료 광고 보기 (${endedCount})</label>` : ''}
       </div>
       <div class="table-wrap">
         <table class="table">
@@ -381,7 +390,7 @@
                 <td>${cardCell(ad)}</td>
                 <td class="num">${g.metric ?? '<span class="muted">-</span>'}</td>
               </tr>`;
-          }).join('') || `<tr><td colspan="6" class="empty">${hasFilter ? '조건에 맞는 광고가 없어요' : '아직 등록된 광고가 없어요'}</td></tr>`}</tbody>
+          }).join('') || `<tr><td colspan="6" class="empty">${emptyText}</td></tr>`}</tbody>
         </table>
       </div>`;
   }
@@ -522,6 +531,7 @@
       daily_budget: Number(d.get('daily')), monthly_budget: Number(d.get('monthly')), card_id: d.get('card') || null,
     };
     if (row.end_date && row.end_date < row.start_date) return toast('종료일이 시작일보다 빨라요. 날짜를 확인해 주세요.');
+    if (row.status === 'ended' && !row.end_date) return toast('종료로 바꾸려면 종료일을 넣어 주세요.');
     const image = pendingImage;
     if (!image && !old?.imagePath) return toast('소재 이미지를 넣어 주세요 (jpg, jpeg, png)');
     const who = rememberAuthor(d.get('author'));
@@ -925,7 +935,10 @@
     if (t.id === 'f-team') { filters.team = t.value; renderAds(); }
     else if (t.id === 'f-media') { filters.media = t.value; renderAds(); }
     else if (t.id === 'f-grade') { filters.grade = t.value; renderAds(); }
+    else if (t.id === 'f-ended') { showEnded = t.checked; renderAds(); }
     else if (t.id === 'f-log') { logFilter = t.value; renderLogs(); }
+    // 상태를 종료로 바꾸면 종료일을 오늘로 채워 줌 (종료한 달까지만 예산에 넣기 위해 필요)
+    else if (t.form?.id === 'ad-form' && t.name === 'status' && t.value === 'ended' && !t.form.elements.end.value) t.form.elements.end.value = today();
     else if (t.id === 'f-month') { pickedMonth = t.value; state.reportMonth = t.value; route(); }
     else if (t.id === 'ad-image' && t.files?.[0]) handleImage(t);
     else if (t.form?.id === 'perf-form' && t.name === 'start' && t.value) t.value = mondayOf(t.value);
