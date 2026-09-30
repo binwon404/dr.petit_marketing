@@ -14,13 +14,15 @@
       <h1>어느 계정으로 들어갈까요?</h1>
     </div>
     <form id="login-form">
-      <div class="acct-list" id="acct-list"></div>
-      <label class="field"><span>비밀번호</span><input type="password" id="pw" placeholder="시안에서는 확인하지 않아요"></label>
-      <button class="btn block">들어가기</button>
+      <div class="acct-list" id="acct-list"><p class="empty">계정 목록을 불러오는 중이에요</p></div>
+      <label class="field"><span>비밀번호 (숫자 4자리)</span><input type="password" id="pw" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="숫자 4자리"></label>
+      <p class="note" id="login-error" role="alert" hidden></p>
+      <button class="btn block" id="login-btn">들어가기</button>
     </form>
-    <p class="hint">시안 화면이에요. 실제 로그인은 Supabase 연결 후 적용돼요.</p>
+    <p class="hint">비밀번호를 10번 틀리면 10분 동안 잠겨요. 비밀번호는 관리자에게 물어봐 주세요.</p>
   </main>
-  <script src="js/demo-data.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js"></script>
+  <script src="js/config.js"></script>
   <script src="js/login.js"></script>
 </body>
 </html>

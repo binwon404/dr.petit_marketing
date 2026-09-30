@@ -85,7 +85,6 @@ input[type="file"] { font-size: 14px; }
 .icon-btn:hover { background: var(--bg); }
 
 /* 상단 */
-.demo-banner { background: var(--primary-soft); color: var(--primary); font-size: 12.5px; text-align: center; padding: 6px 16px; }
 .topbar {
   position: sticky; top: 0; z-index: 10;
   display: flex; align-items: center; gap: 24px;
@@ -106,6 +105,8 @@ input[type="file"] { font-size: 14px; }
 .main { max-width: 1120px; margin: 0 auto; padding: 32px 24px 80px; display: flex; flex-direction: column; gap: 20px; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .page-head h1 { margin-top: 2px; }
+.head-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.head-actions select { width: auto; }
 .panel {
   display: flex; flex-direction: column; gap: 14px;
   padding: 20px 24px;
@@ -164,6 +165,17 @@ td .bar { height: 6px; margin: 6px 0 4px; max-width: 180px; }
   padding: 12px 0; background: none; border: 0; text-align: left; cursor: pointer;
 }
 .row:hover strong { color: var(--primary); }
+.row-main { min-width: 0; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.tags .tag { border: 1px solid var(--line); }
+
+/* 목록형 카드: 제목을 띠로 깔아 아래 내용과 구분 */
+.panel.list { gap: 4px; overflow: hidden; }
+.panel.list .panel-head {
+  margin: -20px -24px 0; padding: 14px 24px;
+  background: var(--surface-2); border-bottom: 1px solid var(--line-strong);
+}
+.panel.list .empty { padding-top: 12px; }
 .row-side { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 .row-side.link { color: var(--primary); }
 
@@ -186,6 +198,16 @@ td .bar { height: 6px; margin: 6px 0 4px; max-width: 180px; }
 .dot-good i { background: var(--good); }
 .dot-bad i { background: var(--bad); }
 .dot-hold i { background: var(--hold); }
+
+/* 팀별 결제 카드 (눈에 덜 띄게) */
+.panel.quiet { gap: 8px; padding: 16px 24px; }
+.panel.quiet h2 { font-size: 15px; }
+.pay-list { list-style: none; margin: 0; padding: 0; font-size: 13.5px; }
+.pay-list li { display: grid; grid-template-columns: 130px 1fr; gap: 16px; padding: 8px 0; }
+.pay-list li + li { border-top: 1px solid var(--line); }
+.pay-team { color: var(--muted); }
+.pay-cards { display: flex; flex-wrap: wrap; gap: 2px 20px; }
+.pay-cards small { margin-left: 6px; color: var(--faint); font-size: 12.5px; }
 
 /* 필터 */
 .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -272,7 +294,14 @@ td .bar { height: 6px; margin: 6px 0 4px; max-width: 180px; }
 
 /* 설정 · 카드 */
 .card-list { list-style: none; margin: 0; padding: 0; }
-.card-list li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.card-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.card-side { display: flex; align-items: center; gap: 14px; white-space: nowrap; }
+.pin-form { display: flex; gap: 8px; }
+.pin-form input { flex: 0 0 110px; }
+.link-btn.quiet { color: var(--muted); }
+.link-btn.quiet:hover { color: var(--bad); text-decoration: underline; }
+/* 결제 카드가 없는 광고 — 조치가 필요하다는 경고 */
+.need-card, .field small.need-card { color: var(--bad); font-weight: 600; }
 .card-add { display: flex; flex-wrap: wrap; gap: 8px; }
 .card-add input[name="name"] { flex: 1 1 200px; width: auto; }
 .card-add input[name="last4"] { flex: 0 0 120px; }
@@ -304,14 +333,15 @@ td .bar { height: 6px; margin: 6px 0 4px; max-width: 180px; }
 #login-form { display: flex; flex-direction: column; gap: 16px; }
 .acct-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .acct {
-  display: flex; align-items: flex-start; gap: 10px;
+  position: relative; display: flex;
   padding: 12px 14px; cursor: pointer;
   border: 1px solid var(--line-strong); border-radius: 10px;
 }
-.acct input { margin-top: 4px; }
-.acct span { display: flex; flex-direction: column; }
-.acct small { color: var(--muted); font-size: 12.5px; }
+.acct:hover { border-color: var(--primary); }
+/* 동그라미는 숨기고 선택 동작만 유지 */
+.acct input { position: absolute; opacity: 0; pointer-events: none; }
 .acct:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+.acct:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
   .toast { transition: none; }
@@ -332,7 +362,9 @@ td .bar { height: 6px; margin: 6px 0 4px; max-width: 180px; }
   .dlg-body { padding: 20px 16px; }
   .row { flex-direction: column; align-items: flex-start; gap: 4px; }
   .row-side { text-align: left; }
-  .log li { grid-template-columns: 1fr; gap: 4px; }
+  .log li, .pay-list li { grid-template-columns: 1fr; gap: 4px; }
+  .panel.quiet { padding: 14px 16px; }
+  .panel.list .panel-head { margin: -16px -16px 0; padding: 12px 16px; }
   .log .who { text-align: left; }
   .login-card { padding: 24px 20px; }
 }
