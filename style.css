@@ -98,6 +98,11 @@ input[type="file"] { font-size: 14px; }
 .nav a.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
 .account { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-size: 14px; }
 .tag { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--bg); color: var(--muted); }
+.guide-link {
+  padding: 5px 12px; border: 1px solid var(--line-strong); border-radius: 999px;
+  color: var(--primary); font-size: 13px; font-weight: 600; text-decoration: none;
+}
+.guide-link:hover { background: var(--primary-soft); border-color: var(--primary); }
 .logout { color: var(--muted); font-size: 13px; text-decoration: none; }
 .logout:hover { color: var(--text); }
 
