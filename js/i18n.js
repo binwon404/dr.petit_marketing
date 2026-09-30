@@ -134,7 +134,6 @@
     '{month} 예산 사용': ['{month}の予算使用', '{month}预算使用', 'Budget used: {month}'],
     '결제 카드': ['支払いカード', '付款卡', 'Payment card'],
     '핵심 지표': ['主な指標', '核心指标', 'Key metric'],
-    '일 예산 {x}': ['1日の予算 {x}', '每日预算 {x}', 'Daily budget {x}'],
 
     // ---- 광고 상세 ----
     '{o} 광고': ['{o}広告', '{o}广告', '{o} ad'],
@@ -142,6 +141,16 @@
     '종료일 없음': ['終了日なし', '无结束日期', 'no end date'],
     '일 예산': ['1日の予算', '每日预算', 'Daily budget'],
     '월 예산': ['1か月の予算', '每月预算', 'Monthly budget'],
+    '주 예산': ['1週間の予算', '每周预算', 'Weekly budget'],
+    '예산 미정': ['予算は未定', '预算未定', 'No budget set'],
+    '예산': ['予算', '预算', 'Budget'],
+    '예산 단위': ['予算の単位', '预算单位', 'Budget type'],
+    '금액': ['金額', '金额', 'Amount'],
+    '{b} 기준 환산': ['{b} から換算', '按{b}折算', 'Estimated from {b}'],
+    '(월 환산 약 {x})': ['(1か月に換算して約 {x})', '(折合每月约 {x})', '(about {x} per month)'],
+    ' · 일·주 예산은 그 달 일수로 환산했어요': [' · 1日・1週間の予算はその月の日数で換算しています', ' · 每日、每周预算已按当月天数折算', ' · Daily and weekly budgets are converted using the days in the month'],
+    ' · 예산 미정 광고 {n}개는 예산 합계에서 빠져 있어요': [' · 予算が未定の広告{n}件は予算の合計に入っていません', ' · 预算未定的{n}个广告不计入预算合计', ' · {n} ads with no budget are left out of the budget total'],
+    '매체에 설정한 예산을 그대로 적어 주세요. 정하지 않았으면 "예산 미정"을 골라요.': ['媒体に設定した予算をそのまま書いてください。決めていなければ「予算は未定」を選びます。', '请照填在媒体上设置的预算。没有设置就选"预算未定"。', 'Enter the budget exactly as set on the platform. If none is set, choose "No budget set".'],
     '(약 {x})': ['(約 {x})', '(约 {x})', '(about {x})'],
     '소재 이미지': ['広告の画像', '广告图片', 'Ad image'],
     '등록된 소재 이미지가 없어요': ['登録された画像はありません', '还没有上传图片', 'No image uploaded'],
@@ -275,7 +284,7 @@
       'clinic-cn': ['クリニック_中国', '诊所_中国', 'Clinic_China'],
       'clinic-jp': ['クリニック_日本', '诊所_日本', 'Clinic_Japan'],
       'global-clinic': ['グローバルチーム_clinic', '全球组_clinic', 'Global Team_clinic'],
-      'global-cos': ['グローバルチーム_cosmetic', '全球组_cosmetic', 'Global Team_cosmetic'],
+      'global-cos': ['グローバルチーム_cosmetics', '全球组_cosmetics', 'Global Team_cosmetics'],
     },
     media: {
       meta: ['Meta', 'Meta', 'Meta'],
@@ -293,7 +302,7 @@
       'clinic-cn': ['クリニック_中国チーム', '诊所_中国组', 'Clinic_China Team'],
       'clinic-jp': ['クリニック_日本チーム', '诊所_日本组', 'Clinic_Japan Team'],
       'global-clinic': ['グローバルチーム_clinic', '全球组_clinic', 'Global Team_clinic'],
-      'global-cos': ['グローバルチーム_cosmetic', '全球组_cosmetic', 'Global Team_cosmetic'],
+      'global-cos': ['グローバルチーム_cosmetics', '全球组_cosmetics', 'Global Team_cosmetics'],
     },
   };
 

@@ -115,7 +115,7 @@
       sb.from('media').select('id, name, roas_best, roas_good, cpc_best, cpc_good').order('sort_order').then(must),
       sb.from('settings').select('hold_min_clicks, rate_usd, rate_jpy, rate_cny').single().then(must),
       sb.from('cards').select('id, name, last4').order('created_at').then(must),
-      fetchAll('ads', 'id, team_id, media_id, name, objective, status, start_date, end_date, currency, daily_budget, monthly_budget, card_id, image_path', ['created_at', 'id']),
+      fetchAll('ads', 'id, team_id, media_id, name, objective, status, start_date, end_date, currency, budget_type, budget_amount, card_id, image_path', ['created_at', 'id']),
       fetchAll('ad_performance', 'ad_id, week_start, spend, impressions, clicks, conversions, revenue, author', ['id']),
       canSeeLogs ? sb.from('change_logs').select('at, team_id, who, action, target, detail')
         .order('at', { ascending: false }).order('id', { ascending: false }).limit(300).then(must) : [],
@@ -160,7 +160,7 @@
       ads: ads.map((a) => ({
         id: a.id, team: a.team_id, media: a.media_id, name: a.name, objective: a.objective, status: a.status,
         start: a.start_date, end: a.end_date ?? '', currency: a.currency,
-        daily: Number(a.daily_budget), monthly: Number(a.monthly_budget), card: a.card_id ?? '',
+        budgetType: a.budget_type, budgetAmount: a.budget_amount == null ? null : Number(a.budget_amount), card: a.card_id ?? '',
         imagePath: a.image_path ?? '', image: urlCache.get(a.image_path)?.url ?? '',
         perf: perfOf.get(a.id) ?? [],
       })),
@@ -243,9 +243,35 @@
   // 종료된 광고: 목록과 판정 개수에서는 빼고, 예산·광고비는 종료한 달까지만 셈
   const isEnded = (ad) => ad.status === 'ended';
   const inBudget = (ad) => !isEnded(ad) || !ad.end || ad.end.slice(0, 7) >= state.reportMonth;
+  // 예산: 단위(일/주/월/미정) + 금액 하나. 합계에는 그 달 일수로 월 환산해서 넣고, "미정"은 예산 합계에서 뺌
+  const BUDGET = { daily: T('일 예산'), weekly: T('주 예산'), monthly: T('월 예산'), none: T('예산 미정') };
+  const daysIn = (ym) => { const [y, m] = ym.split('-').map(Number); return new Date(y, m, 0).getDate(); };
+  function monthBudget(ad) {
+    if (ad.budgetType === 'daily') return ad.budgetAmount * daysIn(state.reportMonth);
+    if (ad.budgetType === 'weekly') return ad.budgetAmount / 7 * daysIn(state.reportMonth);
+    return ad.budgetType === 'monthly' ? ad.budgetAmount : null;
+  }
+  const budgetText = (ad) => (ad.budgetType === 'none' ? BUDGET.none : `${BUDGET[ad.budgetType]} ${money(ad.budgetAmount, ad.currency)}`);
+  // 광고 목록의 예산 칸
+  function budgetCell(ad, spend) {
+    const mb = monthBudget(ad);
+    if (mb == null) return `${money(spend, ad.currency)}<span class="sub">${BUDGET.none}</span>`;
+    return `${money(spend, ad.currency)}<span class="muted"> / ${money(mb, ad.currency)}</span>
+      ${bar(mb ? spend / mb : 0)}${ad.budgetType === 'monthly' ? '' : `<span class="sub">${T('{b} 기준 환산', { b: budgetText(ad) })}</span>`}`;
+  }
+  // 광고 상세의 예산 줄
+  function budgetDetail(ad) {
+    const mb = monthBudget(ad);
+    if (mb == null) return BUDGET.none;
+    const c = ad.currency;
+    const note = ad.budgetType !== 'monthly'
+      ? T('(월 환산 약 {x})', { x: c === 'KRW' ? money(mb, c) : `${money(mb, c)} · ${won(krw(mb, c))}` })
+      : c !== 'KRW' ? T('(약 {x})', { x: won(krw(mb, c)) }) : '';
+    return `${budgetText(ad)}${note ? ` <span class="muted">${note}</span>` : ''}`;
+  }
   function budgetOf(ads) {
     return ads.filter(inBudget).reduce((s, ad) => {
-      s.budget += krw(ad.monthly, ad.currency);
+      s.budget += krw(monthBudget(ad) ?? 0, ad.currency);
       s.spend += krw(sumPerf(monthList(ad)).spend, ad.currency);
       return s;
     }, { budget: 0, spend: 0 });
@@ -282,6 +308,9 @@
     const bad = graded.filter(({ g }) => g.key === 'bad');
     const tot = budgetOf(ads);
     const usage = tot.budget ? tot.spend / tot.budget : 0;
+    const counted = ads.filter(inBudget);
+    const noBudget = counted.filter((a) => a.budgetType === 'none' && !isEnded(a)).length;
+    const converted = counted.some((a) => a.budgetType === 'daily' || a.budgetType === 'weekly');
 
     main.innerHTML = `
       <div class="page-head">
@@ -290,10 +319,10 @@
       </div>
 
       <section class="panel budget">
-        <div class="budget-top"><span class="label">${T('월 예산 사용')}</span><span class="budget-pct">${Math.round(usage * 100)}%</span></div>
+        <div class="budget-top"><span class="label">${T('월 예산 사용')}</span><span class="budget-pct">${tot.budget ? `${Math.round(usage * 100)}%` : '-'}</span></div>
         <div class="budget-nums"><strong>${won(tot.spend)}</strong><span> / ${won(tot.budget)}</span></div>
         ${bar(usage)}
-        <p class="hint">${T('남은 예산 {x}', { x: won(Math.max(tot.budget - tot.spend, 0)) })}${ads.some((a) => inBudget(a) && a.currency !== 'KRW') ? T(' · 해외 광고비는 원화로 환산했어요') : ''}</p>
+        <p class="hint">${T('남은 예산 {x}', { x: won(Math.max(tot.budget - tot.spend, 0)) })}${counted.some((a) => a.currency !== 'KRW') ? T(' · 해외 광고비는 원화로 환산했어요') : ''}${converted ? T(' · 일·주 예산은 그 달 일수로 환산했어요') : ''}${noBudget ? T(' · 예산 미정 광고 {n}개는 예산 합계에서 빠져 있어요', { n: noBudget }) : ''}</p>
       </section>
 
       <section class="signals" aria-label="${T('판정별 광고 수')}">
@@ -401,8 +430,7 @@
                 <td>${pill(g)}</td>
                 <td><div class="ad-cell">${thumb(ad)}<div><strong>${esc(ad.name)}</strong><span class="sub">${isTeam ? '' : `${esc(teamName(ad.team))} · `}${esc(mediaName(ad.media))} · ${OBJECTIVE[ad.objective]}</span></div></div></td>
                 <td><span class="status status-${ad.status}">${STATUS[ad.status]}</span></td>
-                <td class="num">${money(s.spend, ad.currency)}<span class="muted"> / ${money(ad.monthly, ad.currency)}</span>
-                  ${bar(ad.monthly ? s.spend / ad.monthly : 0)}<span class="sub">${T('일 예산 {x}', { x: money(ad.daily, ad.currency) })}</span></td>
+                <td class="num">${budgetCell(ad, s.spend)}</td>
                 <td>${cardCell(ad)}</td>
                 <td class="num">${g.metric ?? '<span class="muted">-</span>'}</td>
               </tr>`;
@@ -436,8 +464,7 @@
         <dl class="info">
           <div><dt>${T('상태')}</dt><dd>${STATUS[ad.status]}</dd></div>
           <div><dt>${T('기간')}</dt><dd>${md(ad.start)} ~ ${ad.end ? md(ad.end) : T('종료일 없음')}</dd></div>
-          <div><dt>${T('일 예산')}</dt><dd>${money(ad.daily, c)}</dd></div>
-          <div><dt>${T('월 예산')}</dt><dd>${money(ad.monthly, c)}${c !== 'KRW' ? ` <span class="muted">${T('(약 {x})', { x: won(krw(ad.monthly, c)) })}</span>` : ''}</dd></div>
+          <div><dt>${T('예산')}</dt><dd>${budgetDetail(ad)}</dd></div>
           <div><dt>${T('결제 카드')}</dt><dd>${cardCell(ad)}</dd></div>
         </dl>
         <div class="creative">
@@ -473,7 +500,7 @@
     if (id && !ad) return;
     const v = ad ?? {
       team: isTeam ? account.team : state.teams[0].id, media: 'meta', name: '', objective: 'sales', status: 'running',
-      start: today(), end: '', currency: 'KRW', daily: '', monthly: '', card: '', image: '', imagePath: '',
+      start: today(), end: '', currency: 'KRW', budgetType: 'daily', budgetAmount: '', card: '', image: '', imagePath: '',
     };
     pendingImage = null;
     formImage = v.image;
@@ -505,9 +532,10 @@
         </div>
         <div class="grid3">
           <label class="field"><span>${T('통화')}</span><select name="currency" required>${opts(CURRENCIES, v.currency)}</select></label>
-          <label class="field"><span>${T('일 예산')}</span><input type="number" name="daily" min="0" step="any" required value="${esc(v.daily)}"></label>
-          <label class="field"><span>${T('월 예산')}</span><input type="number" name="monthly" min="0" step="any" required value="${esc(v.monthly)}"></label>
+          <label class="field"><span>${T('예산 단위')}</span><select name="budgetType" required>${opts(Object.entries(BUDGET), v.budgetType)}</select></label>
+          <label class="field"><span>${T('금액')}</span><input type="number" name="budgetAmount" min="0" step="any" ${v.budgetType === 'none' ? 'disabled' : 'required'} value="${esc(v.budgetAmount ?? '')}"></label>
         </div>
+        <p class="hint">${T('매체에 설정한 예산을 그대로 적어 주세요. 정하지 않았으면 "예산 미정"을 골라요.')}</p>
         <label class="field"><span>${T('결제 카드')}</span>
           <select name="card" ${cardOpts.length ? 'required' : 'disabled'}>${needPick ? `<option value="">${cardOpts.length ? T('카드를 선택해 주세요') : T('등록된 카드가 없어요')}</option>` : ''}${opts(cardOpts, v.card)}</select>
           ${ad && needPick && cardOpts.length ? `<small class="need-card">${T('지정된 카드가 없어요. 카드를 골라 주세요')}</small>` : ''}
@@ -531,7 +559,7 @@
   const sameAd = (old, row) => old.team === row.team_id && old.media === row.media_id && old.name === row.name
     && old.objective === row.objective && old.status === row.status && old.start === row.start_date
     && (old.end || null) === row.end_date && old.currency === row.currency
-    && old.daily === row.daily_budget && old.monthly === row.monthly_budget && (old.card || null) === row.card_id;
+    && old.budgetType === row.budget_type && old.budgetAmount === row.budget_amount && (old.card || null) === row.card_id;
 
   async function uploadImage(path, dataUrl) {
     const blob = await (await fetch(dataUrl)).blob();
@@ -545,7 +573,7 @@
       team_id: isTeam ? account.team : d.get('team'),
       media_id: d.get('media'), name: d.get('name').trim(), objective: d.get('objective'), status: d.get('status'),
       start_date: d.get('start'), end_date: d.get('end') || null, currency: d.get('currency'),
-      daily_budget: Number(d.get('daily')), monthly_budget: Number(d.get('monthly')), card_id: d.get('card') || null,
+      budget_type: d.get('budgetType'), budget_amount: d.get('budgetType') === 'none' ? null : Number(d.get('budgetAmount')), card_id: d.get('card') || null,
     };
     if (row.end_date && row.end_date < row.start_date) return toast(T('종료일이 시작일보다 빨라요. 날짜를 확인해 주세요.'));
     if (row.status === 'ended' && !row.end_date) return toast(T('종료로 바꾸려면 종료일을 넣어 주세요.'));
@@ -977,6 +1005,13 @@
     else if (t.id === 'f-log') { logFilter = t.value; renderLogs(); }
     // 상태를 종료로 바꾸면 종료일을 오늘로 채워 줌 (종료한 달까지만 예산에 넣기 위해 필요)
     else if (t.form?.id === 'ad-form' && t.name === 'status' && t.value === 'ended' && !t.form.elements.end.value) t.form.elements.end.value = today();
+    // 예산 단위가 "미정"이면 금액 칸을 비우고 잠금
+    else if (t.form?.id === 'ad-form' && t.name === 'budgetType') {
+      const amount = t.form.elements.budgetAmount;
+      amount.disabled = t.value === 'none';
+      amount.required = t.value !== 'none';
+      if (t.value === 'none') amount.value = '';
+    }
     else if (t.id === 'f-month') { pickedMonth = t.value; state.reportMonth = t.value; route(); }
     else if (t.id === 'ad-image' && t.files?.[0]) handleImage(t);
     else if (t.form?.id === 'perf-form' && t.name === 'start' && t.value) t.value = mondayOf(t.value);
