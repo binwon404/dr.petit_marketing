@@ -109,8 +109,10 @@ h3 { font-size: 22px; line-height: 1.35; margin-top: 8px; }
 header { display: flex; flex-direction: column; gap: 12px; }
 .lang-row { display: flex; justify-content: flex-end; }
 .lang-row select {
-  height: 40px; padding: 0 12px; font: inherit; font-size: 16px; color: var(--ink);
-  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  appearance: none; -webkit-appearance: none;
+  height: 40px; padding: 0 38px 0 14px; font: inherit; font-size: 16px; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.5l4.5 4.5 4.5-4.5' fill='none' stroke='%237A8794' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 14px center / 12px 8px;
 }
 .kr-note { background: var(--front-tint); color: var(--ink); border-radius: 12px; padding: 12px 16px; font-size: 16px; }
 
