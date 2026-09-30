@@ -283,6 +283,7 @@
       tiktok: ['TikTok', 'TikTok', 'TikTok'],
       amazon: ['Amazon', 'Amazon', 'Amazon'],
       x: ['X(旧Twitter)', 'X(原Twitter)', 'X (formerly Twitter)'],
+      coupang: ['Coupang', 'Coupang', 'Coupang'],
     },
     account: {
       ceo: ['代表', '代表', 'CEO'],
