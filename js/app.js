@@ -649,11 +649,27 @@
   const numField = (name, label, step = '1') =>
     `<label class="field"><span>${label}</span><input type="number" name="${name}" min="0" step="${step}" required inputmode="decimal"></label>`;
 
+  // 성과를 넣을 수 있는 주: 광고가 시작한 주부터 이번 주까지(종료한 광고는 종료한 주까지) + 이미 입력된 주
+  function weeksOf(ad) {
+    const last = isEnded(ad) && ad.end && ad.end < today() ? ad.end : today();
+    const weeks = new Set(ad.perf.map((p) => p.start));
+    for (let w = mondayOf(ad.start); w <= mondayOf(last); w = addDays(w, 7)) weeks.add(w);
+    return [...weeks].sort();
+  }
+
   function perfForm(id) {
     if (!canEdit) return;
     const ad = findAd(id);
     if (!ad) return;
-    const start = state.latestWeek;
+    const weeks = weeksOf(ad);
+    if (!weeks.length) return toast(T('광고가 시작한 뒤에 성과를 넣을 수 있어요'));
+    // 처음 고르는 주: 지난주가 비어 있으면 지난주, 아니면 끝난 주 가운데 가장 오래된 빈 주, 다 찼으면 가장 최근 주
+    const done = new Set(ad.perf.map((p) => p.start));
+    const finished = weeks.filter((w) => w <= state.latestWeek);
+    const start = finished.includes(state.latestWeek) && !done.has(state.latestWeek) ? state.latestWeek
+      : finished.find((w) => !done.has(w)) ?? finished.at(-1) ?? weeks.at(-1);
+    const thisWeek = mondayOf(today());
+    const weekText = (w) => `${weekLabel(w)}${w === thisWeek ? T(' (이번 주)') : ''} · ${done.has(w) ? T('입력함') : T('아직 안 넣음')}`;
     const cur = ad.currency;
     const step = cur === 'USD' ? '0.01' : '1';
 
@@ -663,11 +679,8 @@
           <div><p class="eyebrow">${esc(mediaName(ad.media))} · ${T('{o} 광고', { o: OBJECTIVE[ad.objective] })}</p><h2>${T('{name} 성과 입력', { name: esc(ad.name) })}</h2></div>
           <button type="button" class="icon-btn" data-act="close" aria-label="${T('닫기')}">×</button>
         </div>
-        <div class="grid2">
-          <label class="field"><span>${T('주 시작일 (월요일)')}</span><input type="date" name="start" required value="${start}">
-            <small>${T('다른 요일을 골라도 그 주 월요일로 맞춰져요')}</small></label>
-          <div class="field"><span>${T('입력 기간')}</span><div class="week-label" id="week-label">${weekLabel(start)}</div></div>
-        </div>
+        <label class="field"><span>${T('입력할 주')}</span><select name="start" required>${opts(weeks.map((w) => [w, weekText(w)]), start)}</select>
+          <small>${T('광고 기간의 주가 모두 나와요. 빠진 주를 골라 넣어 주세요.')}</small></label>
         <p class="note" id="exists-note" hidden>${T('이미 입력된 주예요. 저장하면 새 숫자로 바뀌어요.')}</p>
         <p class="hint">${T('매체 광고 관리자 화면에서 같은 기간의 숫자를 그대로 옮겨 적어 주세요.')}</p>
         <div class="grid3">
@@ -692,7 +705,7 @@
   }
 
   const PERF_KEYS = ['spend', 'impressions', 'clicks', 'conversions', 'revenue'];
-  const perfStart = (f) => (f.elements.start.value ? mondayOf(f.elements.start.value) : '');
+  const perfStart = (f) => f.elements.start.value;
   function fillExisting(f, ad) {
     const ex = ad.perf.find((p) => p.start === perfStart(f));
     if (ex) PERF_KEYS.forEach((k) => { f.elements[k].value = ex[k]; });
@@ -709,10 +722,11 @@
   function updatePerfPreview(f) {
     const ad = findAd(f.dataset.id);
     const p = readPerf(f);
-    $('#week-label').textContent = p.start ? weekLabel(p.start) : '-';
     const m = calc(p);
-    const list = monthList(ad).filter((x) => x.start !== p.start);
-    if (p.start && weekMonth(p.start) === state.reportMonth) list.push(p);
+    // 예상 판정은 고른 주가 들어가는 달 기준 (월초에 지난달 마지막 주를 넣을 때도 맞게)
+    const wm = p.start ? weekMonth(p.start) : state.reportMonth;
+    const list = ad.perf.filter((x) => weekMonth(x.start) === wm && x.start !== p.start);
+    if (p.start) list.push(p);
     const g = grade(ad, list);
     const c = ad.currency;
     $('#perf-preview').innerHTML = `
@@ -722,7 +736,7 @@
         <span>CPA <strong>${m.cpa != null ? money(m.cpa, c) : '-'}</strong></span>
         <span>ROAS <strong>${p.revenue && m.roas != null ? T('{x}배', { x: m.roas.toFixed(2) }) : '-'}</strong></span>
       </div>
-      <div class="preview-grade">${pill(g)}<span class="hint">${T('{month} 누적 기준 예상 판정', { month: monthLabel() })}</span></div>`;
+      <div class="preview-grade">${pill(g)}<span class="hint">${T('{month} 누적 기준 예상 판정', { month: monthText(wm) })}</span></div>`;
   }
 
   async function submitPerf(f) {
@@ -738,8 +752,8 @@
         ad_id: ad.id, week_start: p.start, spend: p.spend, impressions: p.impressions, clicks: p.clicks,
         conversions: p.conversions, revenue: p.revenue, author,
       }, { onConflict: 'ad_id,week_start' }));
-      // 방금 넣은 주가 화면에 바로 보이도록 그 달로 맞춤
-      pickedMonth = p.start.slice(0, 7);
+      // 방금 넣은 주가 화면에 바로 보이도록 그 주가 들어가는 달로 맞춤
+      pickedMonth = weekMonth(p.start);
       await reload();
     });
     if (!ok) return;
@@ -1015,7 +1029,6 @@
     }
     else if (t.id === 'f-month') { pickedMonth = t.value; state.reportMonth = t.value; route(); }
     else if (t.id === 'ad-image' && t.files?.[0]) handleImage(t);
-    else if (t.form?.id === 'perf-form' && t.name === 'start' && t.value) t.value = mondayOf(t.value);
   });
 
   document.addEventListener('input', (e) => {

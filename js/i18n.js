@@ -204,9 +204,12 @@
 
     // ---- 성과 입력 ----
     '{name} 성과 입력': ['{name} の成果入力', '{name} 填写成果', 'Enter results: {name}'],
-    '주 시작일 (월요일)': ['週の開始日 (月曜日)', '周开始日 (周一)', 'Week start (Monday)'],
-    '다른 요일을 골라도 그 주 월요일로 맞춰져요': ['ほかの曜日を選んでも、その週の月曜日に合わせます', '选其他日子也会自动调整为该周周一', 'Any day you pick is adjusted to the Monday of that week'],
-    '입력 기간': ['入力期間', '填写期间', 'Period'],
+    '입력할 주': ['入力する週', '要填写的周', 'Week to enter'],
+    '광고 기간의 주가 모두 나와요. 빠진 주를 골라 넣어 주세요.': ['広告期間の週がすべて出ます。抜けている週を選んで入力してください。', '会列出广告期间的所有周。请选出漏填的周来填写。', 'Every week of the ad period is listed. Pick a missing week and fill it in.'],
+    ' (이번 주)': [' (今週)', ' (本周)', ' (this week)'],
+    '입력함': ['入力済み', '已填写', 'Entered'],
+    '아직 안 넣음': ['未入力', '未填写', 'Not yet'],
+    '광고가 시작한 뒤에 성과를 넣을 수 있어요': ['広告が始まってから成果を入力できます', '广告开始后才能填写成果', 'You can enter results after the ad starts'],
     '이미 입력된 주예요. 저장하면 새 숫자로 바뀌어요.': ['すでに入力された週です。保存すると新しい数字に変わります。', '这一周已经填写过。保存后会替换成新的数字。', 'This week already has numbers. Saving replaces them.'],
     '매체 광고 관리자 화면에서 같은 기간의 숫자를 그대로 옮겨 적어 주세요.': ['媒体の広告管理画面で、同じ期間の数字をそのまま写してください。', '请把媒体广告后台里同一期间的数字原样抄过来。', "Copy the numbers for the same period from the platform's ads manager."],
     '광고비 ({cur})': ['広告費 ({cur})', '广告费 ({cur})', 'Spend ({cur})'],
