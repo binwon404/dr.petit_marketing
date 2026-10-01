@@ -32,6 +32,12 @@
       <strong>${esc(TN('account', a.login_id, a.name))}</strong>
     </label>`).join('');
 
+  // 점 가림을 못 하는 브라우저에서는 예전처럼 비밀번호 칸으로 (숫자가 그대로 보이지 않게)
+  if (!window.CSS?.supports?.('-webkit-text-security', 'disc')) pw.type = 'password';
+  list.addEventListener('change', () => { pw.value = ''; err.hidden = true; pw.focus(); });
+  // 뒤로 가기로 돌아왔을 때 남아 있던 숫자도 비움
+  window.addEventListener('pageshow', () => { pw.value = ''; });
+
   pw.addEventListener('input', () => {
     pw.value = pw.value.replace(/\D/g, '').slice(0, 4);
     err.hidden = true;

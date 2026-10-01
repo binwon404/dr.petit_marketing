@@ -270,6 +270,7 @@
     '카드를 삭제했어요': ['カードを削除しました', '卡已删除', 'Card deleted'],
     '숫자 4자리를 입력해 주세요': ['数字4桁を入力してください', '请输入4位数字', 'Please enter 4 digits'],
     '{name} 계정의 비밀번호를 바꿀까요?': ['{name} のパスワードを変えますか？', '要修改 {name} 的密码吗？', 'Change the password for {name}?'],
+    '새 비밀번호: {pin}': ['新しいパスワード: {pin}', '新密码: {pin}', 'New password: {pin}'],
     '바꾸면 지금 바로 다시 로그인해야 해요.': ['変えると、すぐにログインし直す必要があります。', '修改后需要马上重新登录。', 'You will have to sign in again right away.'],
     '그 계정으로 접속해 있던 사람은 다시 로그인해야 해요.': ['そのアカウントでログインしていた人は、ログインし直す必要があります。', '正在使用该账号的人需要重新登录。', 'Anyone signed in with that account will have to sign in again.'],
     '비밀번호를 바꾸지 못했어요. 잠시 뒤 다시 시도해 주세요.': ['パスワードを変更できませんでした。しばらくしてからもう一度お試しください。', '修改密码失败。请稍后再试。', 'Could not change the password. Please try again shortly.'],

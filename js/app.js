@@ -72,6 +72,8 @@
   }
   const md = (iso) => { const [, m, d] = iso.split('-'); return `${Number(m)}/${Number(d)}`; };
   const weekLabel = (start) => `${md(start)}~${md(addDays(start, 6))}`;
+  // 한 주(월~일)는 4일 이상 걸친 달에 넣음 = 그 주 목요일이 있는 달 (예: 9/28~10/4는 10월)
+  const weekMonth = (start) => addDays(start, 3).slice(0, 7);
   const monthText = (ym) => { const [y, m] = ym.split('-'); return T('{y}년 {m}월', { y, m: Number(m), mn: window.I18N.monthName(Number(m)) }); };
   function shiftMonth(ym, n) {
     const [y, m] = ym.split('-').map(Number);
@@ -132,15 +134,14 @@
       });
     });
     // 볼 수 있는 달: 가장 오래된 광고·성과가 있는 달부터 이번 달까지 전부 (광고 시작일 기준으로는 최대 24개월 전까지)
-    // 처음 보여 주는 달: 이번 달 성과가 아직 없으면 성과가 있는 가장 최근 달
-    const dataMonths = [...new Set(perf.map((p) => p.week_start.slice(0, 7)))].sort().reverse();
+    // 처음 보여 주는 달: 항상 이번 달 (다른 달은 위의 달 선택에서 고름 — 고른 달은 새로고침 전까지 유지)
+    const dataMonths = [...new Set(perf.map((p) => weekMonth(p.week_start)))].sort().reverse();
     const oldestAd = ads.map((a) => a.start_date.slice(0, 7)).sort()[0] ?? thisMonth();
     const floor = shiftMonth(thisMonth(), -24);
     const first = [thisMonth(), ...dataMonths, oldestAd < floor ? floor : oldestAd].sort()[0];
     const months = [];
     for (let m = [thisMonth(), ...dataMonths].sort().at(-1); m >= first; m = shiftMonth(m, -1)) months.push(m);
-    const reportMonth = months.includes(pickedMonth) ? pickedMonth
-      : dataMonths.includes(thisMonth()) ? thisMonth() : dataMonths[0] ?? thisMonth();
+    const reportMonth = months.includes(pickedMonth) ? pickedMonth : thisMonth();
 
     return {
       months,
@@ -203,7 +204,7 @@
       roas: s.spend ? s.revenue / s.spend : null,
     };
   }
-  const monthList = (ad) => ad.perf.filter((p) => p.start.startsWith(state.reportMonth));
+  const monthList = (ad) => ad.perf.filter((p) => weekMonth(p.start) === state.reportMonth);
 
   function grade(ad, list = monthList(ad)) {
     if (!list.length) return { key: 'hold', reason: T('{month} 입력된 성과가 없어요', { month: monthWord() }) };
@@ -233,8 +234,8 @@
 
   // 팀 간 차단은 Supabase 권한 규칙(RLS)이 함 — 여기 필터는 화면 정리용
   const teamAds = () => (isTeam ? state.ads.filter((a) => a.team === account.team) : state.ads);
-  // 지난달을 볼 때는 그 달에 이미 시작한 광고만 보여 줌 (이번 달 보기에서는 등록된 광고 전부)
-  const existedIn = (ad) => state.reportMonth >= thisMonth() || ad.start.slice(0, 7) <= state.reportMonth;
+  // 지난달을 볼 때는 그 달에 이미 시작했거나 그 달 성과가 있는 광고만 보여 줌 (이번 달 보기에서는 등록된 광고 전부)
+  const existedIn = (ad) => state.reportMonth >= thisMonth() || ad.start.slice(0, 7) <= state.reportMonth || monthList(ad).length > 0;
   const visibleAds = () => teamAds().filter(existedIn);
   function findAd(id) {
     const ad = state.ads.find((a) => a.id === id);
@@ -711,7 +712,7 @@
     $('#week-label').textContent = p.start ? weekLabel(p.start) : '-';
     const m = calc(p);
     const list = monthList(ad).filter((x) => x.start !== p.start);
-    if (p.start.startsWith(state.reportMonth)) list.push(p);
+    if (p.start && weekMonth(p.start) === state.reportMonth) list.push(p);
     const g = grade(ad, list);
     const c = ad.currency;
     $('#perf-preview').innerHTML = `
@@ -822,7 +823,7 @@
         <ul class="card-list">${state.accounts.map((a) => `
           <li><span>${esc(a.name)}</span>
             <form class="pin-form" data-login="${esc(a.login_id)}" data-name="${esc(a.name)}">
-              <input type="password" name="pin" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="${T('새 4자리')}" aria-label="${T('{name} 새 비밀번호', { name: esc(a.name) })}">
+              <input type="text" name="pin" inputmode="numeric" maxlength="4" autocomplete="off" spellcheck="false" placeholder="${T('새 4자리')}" aria-label="${T('{name} 새 비밀번호', { name: esc(a.name) })}">
               <button class="btn ghost">${T('변경')}</button>
             </form></li>`).join('')}</ul>
       </section>`;
@@ -913,7 +914,7 @@
     const pin = f.elements.pin.value;
     if (!/^\d{4}$/.test(pin)) return toast(T('숫자 4자리를 입력해 주세요'));
     const self = login === account.id;
-    if (!confirm(`${T('{name} 계정의 비밀번호를 바꿀까요?', { name })}\n${self ? T('바꾸면 지금 바로 다시 로그인해야 해요.') : T('그 계정으로 접속해 있던 사람은 다시 로그인해야 해요.')}`)) return;
+    if (!confirm(`${T('{name} 계정의 비밀번호를 바꿀까요?', { name })}\n${T('새 비밀번호: {pin}', { pin })}\n${self ? T('바꾸면 지금 바로 다시 로그인해야 해요.') : T('그 계정으로 접속해 있던 사람은 다시 로그인해야 해요.')}`)) return;
     const ok = await run(f, async () => { must(await sb.rpc('admin_set_pin', { p_login: login, p_pin: pin })); },
       T('비밀번호를 바꾸지 못했어요. 잠시 뒤 다시 시도해 주세요.'));
     if (!ok) return;

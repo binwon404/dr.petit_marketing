@@ -23,7 +23,7 @@
     </div>
     <form id="login-form">
       <div class="acct-list" id="acct-list"><p class="empty" data-i18n>계정 목록을 불러오는 중이에요</p></div>
-      <label class="field"><span data-i18n>비밀번호</span><input type="password" id="pw" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="숫자 4자리" data-i18n-ph></label>
+      <label class="field"><span data-i18n>비밀번호</span><input type="text" id="pw" class="pin-mask" inputmode="numeric" maxlength="4" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="숫자 4자리" data-i18n-ph></label>
       <p class="note" id="login-error" role="alert" hidden></p>
       <button class="btn block" id="login-btn" data-i18n>들어가기</button>
     </form>

@@ -322,6 +322,8 @@ td .bar { height: 6px; margin: 6px 0 4px; max-width: 180px; }
 .card-list { list-style: none; margin: 0; padding: 0; }
 .card-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .card-side { display: flex; align-items: center; gap: 14px; white-space: nowrap; }
+/* 로그인 4자리: 브라우저 비밀번호 저장·자동 입력을 피하려고 일반 칸에 점으로만 가림 */
+.pin-mask { -webkit-text-security: disc; }
 .pin-form { display: flex; gap: 8px; }
 .pin-form input { flex: 0 0 110px; }
 .link-btn.quiet { color: var(--muted); }
