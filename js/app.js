@@ -424,7 +424,7 @@
       </div>
       <div class="table-wrap">
         <table class="table">
-          <thead><tr><th>${T('판정')}</th><th>${T('광고')}</th><th>${T('상태')}</th><th>${T('{month} 예산 사용', { month: monthWord() })}</th><th>${T('결제 카드')}</th><th>${T('핵심 지표')}</th></tr></thead>
+          <thead><tr><th>${T('판정')}</th><th>${T('광고')}</th><th>${T('상태')}</th><th>${T('{month} 예산 사용', { month: monthWord() })}</th><th>${T('결제 수단')}</th><th>${T('핵심 지표')}</th></tr></thead>
           <tbody>${rows.map(({ ad, g }) => {
             const s = sumPerf(monthList(ad));
             return `
@@ -467,7 +467,7 @@
           <div><dt>${T('상태')}</dt><dd>${STATUS[ad.status]}</dd></div>
           <div><dt>${T('기간')}</dt><dd>${md(ad.start)} ~ ${ad.end ? md(ad.end) : T('종료일 없음')}</dd></div>
           <div><dt>${T('예산')}</dt><dd>${budgetDetail(ad)}</dd></div>
-          <div><dt>${T('결제 카드')}</dt><dd>${cardCell(ad)}</dd></div>
+          <div><dt>${T('결제 수단')}</dt><dd>${cardCell(ad)}</dd></div>
         </dl>
         <div class="creative">
           <h3>${T('소재 이미지')}</h3>
