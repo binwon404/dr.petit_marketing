@@ -77,6 +77,10 @@
     '엔 (JPY)': ['円 (JPY)', '日元 (JPY)', 'Japanese yen (JPY)'],
     '위안 (CNY)': ['人民元 (CNY)', '人民币 (CNY)', 'Chinese yuan (CNY)'],
     '미지정': ['未指定', '未指定', 'Not set'],
+    '결제 수단': ['支払い方法', '付款方式', 'Payment method'],
+    '카드': ['カード', '信用卡', 'Card'],
+    '계좌이체': ['口座振込', '银行转账', 'Bank transfer'],
+    '기타': ['その他', '其他', 'Other'],
     '카드를 지정해 주세요': ['カードを指定してください', '请指定卡', 'Please set a card'],
 
     // ---- 날짜 ----
@@ -297,6 +301,7 @@
       amazon: ['Amazon', 'Amazon', 'Amazon'],
       x: ['X(旧Twitter)', 'X(原Twitter)', 'X (formerly Twitter)'],
       coupang: ['Coupang', 'Coupang', 'Coupang'],
+      naver: ['NAVER', 'NAVER', 'NAVER'],
     },
     account: {
       ceo: ['代表', '代表', 'CEO'],

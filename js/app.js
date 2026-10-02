@@ -46,9 +46,10 @@
     const c = state.cards.find((x) => x.id === id);
     return c ? `${c.name} ****${c.last4}` : T('미지정');
   };
-  const hasCard = (ad) => state.cards.some((c) => c.id === ad.card);
-  // 카드가 삭제됐거나 없는 광고: 종료된 광고가 아니면 빨간 글씨로 지정 요청
-  const cardCell = (ad) => (hasCard(ad) ? esc(cardLabel(ad.card))
+  const PAY = { card: T('카드'), transfer: T('계좌이체'), other: T('기타') };
+  const hasCard = (ad) => ad.payMethod !== 'card' || state.cards.some((c) => c.id === ad.card);
+  // 카드 결제인데 카드가 삭제됐거나 없는 광고: 종료된 광고가 아니면 빨간 글씨로 지정 요청 (계좌이체 등은 카드 불필요)
+  const cardCell = (ad) => (ad.payMethod !== 'card' ? esc(PAY[ad.payMethod]) : hasCard(ad) ? esc(cardLabel(ad.card))
     : ad.status === 'ended' ? `<span class="muted">${T('미지정')}</span>` : `<span class="need-card">${T('카드를 지정해 주세요')}</span>`);
   const num = (v) => Number(v || 0).toLocaleString('ko-KR');
   const money = (v, cur) =>
@@ -117,7 +118,7 @@
       sb.from('media').select('id, name, roas_best, roas_good, cpc_best, cpc_good').order('sort_order').then(must),
       sb.from('settings').select('hold_min_clicks, rate_usd, rate_jpy, rate_cny').single().then(must),
       sb.from('cards').select('id, name, last4').order('created_at').then(must),
-      fetchAll('ads', 'id, team_id, media_id, name, objective, status, start_date, end_date, currency, budget_type, budget_amount, card_id, image_path', ['created_at', 'id']),
+      fetchAll('ads', 'id, team_id, media_id, name, objective, status, start_date, end_date, currency, budget_type, budget_amount, card_id, pay_method, image_path', ['created_at', 'id']),
       fetchAll('ad_performance', 'ad_id, week_start, spend, impressions, clicks, conversions, revenue, author', ['id']),
       canSeeLogs ? sb.from('change_logs').select('at, team_id, who, action, target, detail')
         .order('at', { ascending: false }).order('id', { ascending: false }).limit(300).then(must) : [],
@@ -161,7 +162,7 @@
       ads: ads.map((a) => ({
         id: a.id, team: a.team_id, media: a.media_id, name: a.name, objective: a.objective, status: a.status,
         start: a.start_date, end: a.end_date ?? '', currency: a.currency,
-        budgetType: a.budget_type, budgetAmount: a.budget_amount == null ? null : Number(a.budget_amount), card: a.card_id ?? '',
+        budgetType: a.budget_type, budgetAmount: a.budget_amount == null ? null : Number(a.budget_amount), card: a.card_id ?? '', payMethod: a.pay_method ?? 'card',
         imagePath: a.image_path ?? '', image: urlCache.get(a.image_path)?.url ?? '',
         perf: perfOf.get(a.id) ?? [],
       })),
@@ -353,11 +354,11 @@
         <ul class="pay-list">${state.teams.map((t) => {
           const counts = new Map();
           ads.filter((a) => a.team === t.id && a.status !== 'ended')
-            .forEach((a) => { const k = hasCard(a) ? a.card : ''; counts.set(k, (counts.get(k) ?? 0) + 1); });
+            .forEach((a) => { const k = a.payMethod !== 'card' ? `pay:${a.payMethod}` : hasCard(a) ? a.card : ''; counts.set(k, (counts.get(k) ?? 0) + 1); });
           return `
             <li><span class="pay-team">${esc(t.name)}</span>
               <span class="pay-cards">${[...counts].map(([card, n]) =>
-                `<span${card ? '' : ' class="need-card"'}>${card ? esc(cardLabel(card)) : T('카드 지정 필요')}<small>${T('광고 {n}개', { n })}</small></span>`).join('') || `<span class="muted">${T('연결된 카드 없음')}</span>`}</span></li>`;
+                `<span${card ? '' : ' class="need-card"'}>${card.startsWith('pay:') ? esc(PAY[card.slice(4)]) : card ? esc(cardLabel(card)) : T('카드 지정 필요')}<small>${T('광고 {n}개', { n })}</small></span>`).join('') || `<span class="muted">${T('연결된 카드 없음')}</span>`}</span></li>`;
         }).join('')}</ul>
       </section>`;
   }
@@ -501,12 +502,13 @@
     if (id && !ad) return;
     const v = ad ?? {
       team: isTeam ? account.team : state.teams[0].id, media: 'meta', name: '', objective: 'sales', status: 'running',
-      start: today(), end: '', currency: 'KRW', budgetType: 'daily', budgetAmount: '', card: '', image: '', imagePath: '',
+      start: today(), end: '', currency: 'KRW', budgetType: 'daily', budgetAmount: '', card: '', payMethod: 'card', image: '', imagePath: '',
     };
     pendingImage = null;
     formImage = v.image;
     const cardOpts = state.cards.map((c) => [c.id, cardLabel(c.id)]);
     const needPick = !hasCard(v);
+    const isCard = v.payMethod === 'card';
 
     dlg.innerHTML = `
       <form id="ad-form" class="dlg-body form" data-id="${ad ? ad.id : ''}">
@@ -537,8 +539,9 @@
           <label class="field"><span>${T('금액')}</span><input type="number" name="budgetAmount" min="0" step="any" ${v.budgetType === 'none' ? 'disabled' : 'required'} value="${esc(v.budgetAmount ?? '')}"></label>
         </div>
         <p class="hint">${T('매체에 설정한 예산을 그대로 적어 주세요. 정하지 않았으면 "예산 미정"을 골라요.')}</p>
-        <label class="field"><span>${T('결제 카드')}</span>
-          <select name="card" ${cardOpts.length ? 'required' : 'disabled'}>${needPick ? `<option value="">${cardOpts.length ? T('카드를 선택해 주세요') : T('등록된 카드가 없어요')}</option>` : ''}${opts(cardOpts, v.card)}</select>
+        <label class="field"><span>${T('결제 수단')}</span><select name="payMethod" required>${opts(Object.entries(PAY), v.payMethod)}</select></label>
+        <label class="field" id="card-field"${isCard ? '' : ' hidden'}><span>${T('결제 카드')}</span>
+          <select name="card" ${cardOpts.length ? (isCard ? 'required' : '') : 'disabled'}>${needPick ? `<option value="">${cardOpts.length ? T('카드를 선택해 주세요') : T('등록된 카드가 없어요')}</option>` : ''}${opts(cardOpts, v.card)}</select>
           ${ad && needPick && cardOpts.length ? `<small class="need-card">${T('지정된 카드가 없어요. 카드를 골라 주세요')}</small>` : ''}
           <small>${T('카드 목록은 관리자가 설정에서 등록해요')}</small></label>
         <div class="field">
@@ -560,7 +563,7 @@
   const sameAd = (old, row) => old.team === row.team_id && old.media === row.media_id && old.name === row.name
     && old.objective === row.objective && old.status === row.status && old.start === row.start_date
     && (old.end || null) === row.end_date && old.currency === row.currency
-    && old.budgetType === row.budget_type && old.budgetAmount === row.budget_amount && (old.card || null) === row.card_id;
+    && old.budgetType === row.budget_type && old.budgetAmount === row.budget_amount && (old.card || null) === row.card_id && old.payMethod === row.pay_method;
 
   async function uploadImage(path, dataUrl) {
     const blob = await (await fetch(dataUrl)).blob();
@@ -574,7 +577,8 @@
       team_id: isTeam ? account.team : d.get('team'),
       media_id: d.get('media'), name: d.get('name').trim(), objective: d.get('objective'), status: d.get('status'),
       start_date: d.get('start'), end_date: d.get('end') || null, currency: d.get('currency'),
-      budget_type: d.get('budgetType'), budget_amount: d.get('budgetType') === 'none' ? null : Number(d.get('budgetAmount')), card_id: d.get('card') || null,
+      budget_type: d.get('budgetType'), budget_amount: d.get('budgetType') === 'none' ? null : Number(d.get('budgetAmount')),
+      pay_method: d.get('payMethod'), card_id: d.get('payMethod') === 'card' ? d.get('card') || null : null,
     };
     if (row.end_date && row.end_date < row.start_date) return toast(T('종료일이 시작일보다 빨라요. 날짜를 확인해 주세요.'));
     if (row.status === 'ended' && !row.end_date) return toast(T('종료로 바꾸려면 종료일을 넣어 주세요.'));
@@ -694,6 +698,7 @@
         <label class="field"><span>${T('작성자 이름')}</span><input name="author" required maxlength="20" value="${esc(rememberedAuthor())}" placeholder="${T('수정 이력에 남을 이름')}">
           <small>${T('팀 공용 계정이라 누가 입력했는지 이름을 남겨 주세요')}</small></label>
         <div class="dlg-actions">
+          <button type="button" class="link-btn quiet" data-act="edit-ad" data-id="${ad.id}">${T('광고 정보 수정')}</button>
           <button type="button" class="btn ghost" data-act="close">${T('취소')}</button>
           <button class="btn">${T('저장')}</button>
         </div>
@@ -1026,6 +1031,13 @@
       amount.disabled = t.value === 'none';
       amount.required = t.value !== 'none';
       if (t.value === 'none') amount.value = '';
+    }
+    // 결제 수단이 카드가 아니면 카드 칸을 숨김
+    else if (t.form?.id === 'ad-form' && t.name === 'payMethod') {
+      const field = $('#card-field');
+      const card = t.form.elements.card;
+      field.hidden = t.value !== 'card';
+      if (card.options.length) card.required = t.value === 'card';
     }
     else if (t.id === 'f-month') { pickedMonth = t.value; state.reportMonth = t.value; route(); }
     else if (t.id === 'ad-image' && t.files?.[0]) handleImage(t);
