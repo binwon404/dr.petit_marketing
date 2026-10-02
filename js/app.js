@@ -507,7 +507,8 @@
     pendingImage = null;
     formImage = v.image;
     const cardOpts = state.cards.map((c) => [c.id, cardLabel(c.id)]);
-    const needPick = !hasCard(v);
+    // 카드를 아직 안 골랐거나(계좌이체 등에서 카드로 바꾸는 경우 포함) 지정된 카드가 삭제됐으면 "카드를 선택해 주세요"부터 보여 줌
+    const needPick = !state.cards.some((c) => c.id === v.card);
     const isCard = v.payMethod === 'card';
 
     dlg.innerHTML = `
@@ -542,7 +543,7 @@
         <label class="field"><span>${T('결제 수단')}</span><select name="payMethod" required>${opts(Object.entries(PAY), v.payMethod)}</select></label>
         <label class="field" id="card-field"${isCard ? '' : ' hidden'}><span>${T('결제 카드')}</span>
           <select name="card" ${cardOpts.length ? (isCard ? 'required' : '') : 'disabled'}>${needPick ? `<option value="">${cardOpts.length ? T('카드를 선택해 주세요') : T('등록된 카드가 없어요')}</option>` : ''}${opts(cardOpts, v.card)}</select>
-          ${ad && needPick && cardOpts.length ? `<small class="need-card">${T('지정된 카드가 없어요. 카드를 골라 주세요')}</small>` : ''}
+          ${ad && isCard && needPick && cardOpts.length ? `<small class="need-card">${T('지정된 카드가 없어요. 카드를 골라 주세요')}</small>` : ''}
           <small>${T('카드 목록은 관리자가 설정에서 등록해요')}</small></label>
         <div class="field">
           <label for="ad-image">${T('소재 이미지')}</label>
