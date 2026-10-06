@@ -211,11 +211,20 @@
     if (!list.length) return { key: 'hold', reason: T('{month} 입력된 성과가 없어요', { month: monthWord() }) };
     const s = sumPerf(list);
     const min = state.settings.holdMinClicks;
-    if (s.clicks < min) return { key: 'hold', reason: T('클릭 {a}회 · {b}회 이상 쌓이면 판정해요', { a: num(s.clicks), b: num(min) }) };
+    const j = judge(ad, s);
+    // 클릭이 적으면 판정은 보류하되, 지금까지 숫자로 본 추세를 참고로 함께 돌려줌 (신호등 색·개수는 보류 그대로)
+    if (s.clicks < min) {
+      return { key: 'hold', reason: T('클릭 {a}회 · {b}회 이상 쌓이면 판정해요', { a: num(s.clicks), b: num(min) }), trend: j?.key, trendMetric: j?.metric };
+    }
+    return j ?? { key: 'hold', reason: T('광고비가 0이라 판정할 수 없어요') };
+  }
+  // 숫자만으로 본 판정 (광고비나 클릭이 0이라 계산할 수 없으면 null)
+  function judge(ad, s) {
     const t = state.settings.thresholds[ad.media];
     const m = calc(s);
     if (ad.objective === 'sales') {
       const r = m.roas;
+      if (r == null) return null;
       const key = r >= t.roasBest ? 'best' : r >= t.roasGood ? 'good' : 'bad';
       return {
         key,
@@ -223,6 +232,7 @@
         reason: T('1만 원 써서 {r}만 원 매출 · 기준: 최상 {a}배 이상, 양호 {b}배 이상', { r: r.toFixed(1), a: t.roasBest, b: t.roasGood }),
       };
     }
+    if (m.cpc == null) return null;
     const c = krw(m.cpc, ad.currency);
     const key = c <= t.cpcBest ? 'best' : c <= t.cpcGood ? 'good' : 'bad';
     return {
@@ -280,6 +290,8 @@
   }
 
   // ---------- 공통 조각 ----------
+  // 판단 보류일 때 참고로 보여 주는 지금 추세 (예: "지금 추세: 최상 수준")
+  const trendText = (g) => (g.trend ? T('지금 추세: {g} 수준', { g: GRADES[g.trend].short }) : '');
   const pill = (g, long = true) => `<span class="pill pill-${g.key}"><i></i>${long ? GRADES[g.key].label : GRADES[g.key].short}</span>`;
   const bar = (v) => `<div class="bar${v > 1 ? ' over' : ''}"><i style="width:${Math.min(v, 1) * 100}%"></i></div>`;
   const opts = (list, value) => list.map(([v, l]) => `<option value="${esc(v)}"${v === value ? ' selected' : ''}>${esc(l)}</option>`).join('');
@@ -327,6 +339,8 @@
         <p class="hint">${T('남은 예산 {x}', { x: won(Math.max(tot.budget - tot.spend, 0)) })}${counted.some((a) => a.currency !== 'KRW') ? T(' · 해외 광고비는 원화로 환산했어요') : ''}${converted ? T(' · 일·주 예산은 그 달 일수로 환산했어요') : ''}${noBudget ? T(' · 예산 미정 광고 {n}개는 예산 합계에서 빠져 있어요', { n: noBudget }) : ''}</p>
       </section>
 
+      ${resultsPanel(ads)}
+
       <section class="signals" aria-label="${T('판정별 광고 수')}">
         ${GRADE_KEYS.map((k) => `
           <button class="signal signal-${k}${k === 'bad' && counts.bad ? ' has' : ''}" data-act="filter-grade" data-grade="${k}">
@@ -343,7 +357,61 @@
           </button></li>`).join('')}</ul>` : `<p class="empty">${T('교체가 필요한 광고가 없어요')}</p>`}
       </section>
 
+      ${endedPanel(ads)}
+
       ${isTeam ? reminderPanel() : teamCards(graded, ads) + teamPayCards(ads)}`;
+  }
+
+  // 그 달 성과 합계: 매출·판매 건수는 판매 광고만, 상담·신청은 유입 광고만 (전환의 뜻이 달라 섞지 않음). 끝난 광고도 그 달 숫자는 포함
+  function resultsPanel(ads) {
+    const r = { spend: 0, revenue: 0, sales: 0, leads: 0, hasSales: false, hasTraffic: false, foreign: false, ended: false };
+    ads.forEach((ad) => {
+      const list = monthList(ad);
+      if (!list.length) return;
+      const s = sumPerf(list);
+      if (ad.currency !== 'KRW') r.foreign = true;
+      if (isEnded(ad)) r.ended = true;
+      if (ad.objective === 'sales') {
+        r.hasSales = true;
+        r.spend += krw(s.spend, ad.currency);
+        r.revenue += krw(s.revenue, ad.currency);
+        r.sales += s.conversions;
+      } else {
+        r.hasTraffic = true;
+        r.leads += s.conversions;
+      }
+    });
+    const roas = r.spend ? r.revenue / r.spend : null;
+    const tile = (label, value, sub = '') => `<div class="result"><span class="label">${label}</span><strong>${value}</strong>${sub ? `<span class="sub">${sub}</span>` : ''}</div>`;
+    const tiles = [
+      r.hasSales && tile(T('광고 매출'), won(r.revenue), T('판매 광고 · 광고비 {x}', { x: won(r.spend) })),
+      r.hasSales && tile(T('판매 건수'), T('{n}건', { n: num(r.sales) })),
+      r.hasSales && tile(T('판매 광고 ROAS'), roas != null ? T('{x}배', { x: roas.toFixed(2) }) : '-', roas != null ? T('1만 원 써서 {r}만 원 매출', { r: roas.toFixed(1) }) : ''),
+      r.hasTraffic && tile(T('상담·신청'), T('{n}건', { n: num(r.leads) }), T('유입 광고')),
+    ].filter(Boolean);
+    return `
+      <section class="panel results">
+        <div class="panel-head"><h2>${T('{month} 광고 성과', { month: monthWord() })}</h2></div>
+        ${tiles.length ? `<div class="result-grid">${tiles.join('')}</div>
+          <p class="hint">${r.hasSales ? T('매출은 매체가 집계한 값이라 실제 매출과 다를 수 있어요') : ''}${r.foreign ? T(' · 해외 광고는 원화로 환산했어요') : ''}${r.ended ? T(' · 끝난 광고도 포함해요') : ''}</p>`
+          : `<p class="empty">${T('{month} 입력된 성과가 없어요', { month: monthWord() })}</p>`}
+      </section>`;
+  }
+
+  // 그 달에 끝난 광고: 신호등 개수·교체 목록에서는 빼고(손볼 게 없음), 광고 전체 기간 기준 최종 판정만 따로 보여 줌
+  function endedPanel(ads) {
+    const ended = ads.filter((ad) => isEnded(ad) && ad.end && ad.end.slice(0, 7) === state.reportMonth)
+      .map((ad) => ({ ad, g: grade(ad, ad.perf), spend: krw(sumPerf(ad.perf).spend, ad.currency) }));
+    if (!ended.length) return '';
+    return `
+      <section class="panel list">
+        <div class="panel-head"><h2>${T('{month} 끝난 광고', { month: monthWord() })}</h2><span class="count">${T('전체 기간 기준 · {n}건', { n: ended.length })}</span></div>
+        <ul class="rows">${ended.map(({ ad, g, spend }) => `
+          <li><button class="row" data-act="open-ad" data-id="${ad.id}">
+            <span class="row-main"><strong>${esc(ad.name)}</strong><span class="tags">${isTeam ? '' : `<span class="tag">${esc(teamName(ad.team))}</span>`}<span class="tag">${esc(mediaName(ad.media))}</span></span></span>
+            <span class="row-side">${pill(g, false)}<span class="sub">${g.metric ?? g.trendMetric ?? '-'} · ${T('광고비 {x}', { x: won(spend) })}</span></span>
+          </button></li>`).join('')}</ul>
+      </section>`;
   }
 
   // 대표·관리자용: 팀마다 종료되지 않은 광고에 연결된 결제 카드
@@ -429,12 +497,12 @@
             const s = sumPerf(monthList(ad));
             return `
               <tr data-act="open-ad" data-id="${ad.id}" tabindex="0">
-                <td>${pill(g)}</td>
+                <td>${pill(g)}${g.trend ? `<span class="sub trend">${trendText(g)}</span>` : ''}</td>
                 <td><div class="ad-cell">${thumb(ad)}<div><strong>${esc(ad.name)}</strong><span class="sub">${isTeam ? '' : `${esc(teamName(ad.team))} · `}${esc(mediaName(ad.media))} · ${OBJECTIVE[ad.objective]}</span></div></div></td>
                 <td><span class="status status-${ad.status}">${STATUS[ad.status]}</span></td>
                 <td class="num">${budgetCell(ad, s.spend)}</td>
                 <td>${cardCell(ad)}</td>
-                <td class="num">${g.metric ?? '<span class="muted">-</span>'}</td>
+                <td class="num">${g.metric ?? `<span class="muted">${g.trendMetric ?? '-'}</span>`}</td>
               </tr>`;
           }).join('') || `<tr><td colspan="6" class="empty">${emptyText}</td></tr>`}</tbody>
         </table>
@@ -462,7 +530,7 @@
           <div><p class="eyebrow">${esc(teamName(ad.team))} · ${esc(mediaName(ad.media))} · ${T('{o} 광고', { o: OBJECTIVE[ad.objective] })}</p><h2>${esc(ad.name)}</h2></div>
           <button type="button" class="icon-btn" data-act="close" aria-label="${T('닫기')}">×</button>
         </div>
-        <div class="grade-box grade-${g.key}">${pill(g)}<p>${esc(g.reason)}</p></div>
+        <div class="grade-box grade-${g.key}">${pill(g)}<p>${esc(g.reason)}</p>${g.trend ? `<p class="muted">${T('지금 추세는 {g} 수준({m})이에요. 클릭이 더 쌓이면 바뀔 수 있어요', { g: GRADES[g.trend].short, m: g.trendMetric })}</p>` : ''}</div>
         <dl class="info">
           <div><dt>${T('상태')}</dt><dd>${STATUS[ad.status]}</dd></div>
           <div><dt>${T('기간')}</dt><dd>${md(ad.start)} ~ ${ad.end ? md(ad.end) : T('종료일 없음')}</dd></div>
@@ -742,7 +810,7 @@
         <span>CPA <strong>${m.cpa != null ? money(m.cpa, c) : '-'}</strong></span>
         <span>ROAS <strong>${p.revenue && m.roas != null ? T('{x}배', { x: m.roas.toFixed(2) }) : '-'}</strong></span>
       </div>
-      <div class="preview-grade">${pill(g)}<span class="hint">${T('{month} 누적 기준 예상 판정', { month: monthText(wm) })}</span></div>`;
+      <div class="preview-grade">${pill(g)}<span class="hint">${T('{month} 누적 기준 예상 판정', { month: monthText(wm) })}${g.trend ? ` · ${trendText(g)}` : ''}</span></div>`;
   }
 
   async function submitPerf(f) {

@@ -154,6 +154,13 @@ input[type="file"] { font-size: 14px; }
 .panel.budget .bar { height: 12px; }
 td .bar { height: 6px; margin: 6px 0 4px; max-width: 180px; }
 
+/* 그 달 성과 합계 */
+.result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.result { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; background: var(--bg); border-radius: 10px; }
+.result .label { color: var(--muted); font-size: 13px; }
+.result strong { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.trend { margin-top: 4px; font-size: 12px; }
+
 /* 판정 신호 */
 .signals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .signal {
