@@ -362,9 +362,14 @@
       ${isTeam ? reminderPanel() : teamCards(graded, ads) + teamPayCards(ads)}`;
   }
 
+  // 사업부: 화장품 팀은 판매(매출·ROAS), 클리닉 팀은 유입(상담·신청)이 중심이라 성과를 섞지 않고 나눠 보여 줌
+  // 팀 id로 정함 (새 팀은 id에 clinic이 있으면 클리닉, cos가 있으면 화장품, 아니면 기타)
+  const UNITS = [['cos', T('화장품')], ['clinic', T('클리닉')], ['etc', T('기타')]];
+  const unitOf = (teamId) => (/clinic/.test(teamId) ? 'clinic' : /cos/.test(teamId) ? 'cos' : 'etc');
+
   // 그 달 성과 합계: 매출·판매 건수는 판매 광고만, 상담·신청은 유입 광고만 (전환의 뜻이 달라 섞지 않음). 끝난 광고도 그 달 숫자는 포함
-  function resultsPanel(ads) {
-    const r = { spend: 0, revenue: 0, sales: 0, leads: 0, hasSales: false, hasTraffic: false, foreign: false, ended: false };
+  function resultsOf(ads) {
+    const r = { salesSpend: 0, revenue: 0, sales: 0, trafficSpend: 0, leads: 0, hasSales: false, hasTraffic: false, foreign: false, ended: false };
     ads.forEach((ad) => {
       const list = monthList(ad);
       if (!list.length) return;
@@ -373,27 +378,45 @@
       if (isEnded(ad)) r.ended = true;
       if (ad.objective === 'sales') {
         r.hasSales = true;
-        r.spend += krw(s.spend, ad.currency);
+        r.salesSpend += krw(s.spend, ad.currency);
         r.revenue += krw(s.revenue, ad.currency);
         r.sales += s.conversions;
       } else {
         r.hasTraffic = true;
+        r.trafficSpend += krw(s.spend, ad.currency);
         r.leads += s.conversions;
       }
     });
-    const roas = r.spend ? r.revenue / r.spend : null;
+    r.roas = r.salesSpend ? r.revenue / r.salesSpend : null;
+    r.perLead = r.leads ? r.trafficSpend / r.leads : null;
+    return r;
+  }
+
+  function resultsPanel(ads) {
     const tile = (label, value, sub = '') => `<div class="result"><span class="label">${label}</span><strong>${value}</strong>${sub ? `<span class="sub">${sub}</span>` : ''}</div>`;
-    const tiles = [
-      r.hasSales && tile(T('광고 매출'), won(r.revenue), T('판매 광고 · 광고비 {x}', { x: won(r.spend) })),
-      r.hasSales && tile(T('판매 건수'), T('{n}건', { n: num(r.sales) })),
-      r.hasSales && tile(T('판매 광고 ROAS'), roas != null ? T('{x}배', { x: roas.toFixed(2) }) : '-', roas != null ? T('1만 원 써서 {r}만 원 매출', { r: roas.toFixed(1) }) : ''),
-      r.hasTraffic && tile(T('상담·신청'), T('{n}건', { n: num(r.leads) }), T('유입 광고')),
-    ].filter(Boolean);
+    const groups = isTeam ? [[account.name, ads]] : UNITS.map(([u, name]) => [name, ads.filter((ad) => unitOf(ad.team) === u)]);
+    const rows = groups.map(([name, list]) => {
+      const r = resultsOf(list);
+      if (!r.hasSales && !r.hasTraffic) return null;
+      const b = budgetOf(list);
+      // 판매·유입 광고가 함께 있을 때만 광고비를 나눠 적음 (한쪽뿐이면 위 광고비와 같은 숫자라 생략)
+      const mixed = r.hasSales && r.hasTraffic;
+      const tiles = [
+        tile(T('광고비'), won(b.spend), b.budget ? T('예산의 {p}%', { p: Math.round(b.spend / b.budget * 100) }) : ''),
+        r.hasSales && tile(T('광고 매출'), won(r.revenue), mixed ? T('판매 광고 · 광고비 {x}', { x: won(r.salesSpend) }) : ''),
+        r.hasSales && tile(T('판매 광고 ROAS'), r.roas != null ? T('{x}배', { x: r.roas.toFixed(2) }) : '-', r.roas != null ? T('1만 원 써서 {r}만 원 매출', { r: r.roas.toFixed(1) }) : ''),
+        r.hasSales && tile(T('판매 건수'), T('{n}건', { n: num(r.sales) })),
+        r.hasTraffic && tile(T('상담·신청'), T('{n}건', { n: num(r.leads) }), mixed ? T('유입 광고 · 광고비 {x}', { x: won(r.trafficSpend) }) : ''),
+        r.hasTraffic && tile(T('상담 1건당 광고비'), r.perLead != null ? won(r.perLead) : '-'),
+      ].filter(Boolean);
+      return { name, r, html: `<div class="unit-row"><span class="unit-name">${esc(name)}</span><div class="result-grid">${tiles.join('')}</div></div>` };
+    }).filter(Boolean);
+    const any = (k) => rows.some(({ r }) => r[k]);
     return `
       <section class="panel results">
         <div class="panel-head"><h2>${T('{month} 광고 성과', { month: monthWord() })}</h2></div>
-        ${tiles.length ? `<div class="result-grid">${tiles.join('')}</div>
-          <p class="hint">${r.hasSales ? T('매출은 매체가 집계한 값이라 실제 매출과 다를 수 있어요') : ''}${r.foreign ? T(' · 해외 광고는 원화로 환산했어요') : ''}${r.ended ? T(' · 끝난 광고도 포함해요') : ''}</p>`
+        ${rows.length ? `${rows.map((x) => x.html).join('')}
+          <p class="hint">${any('hasSales') ? T('매출은 매체가 집계한 값이라 실제 매출과 다를 수 있어요') : ''}${any('foreign') ? T(' · 해외 광고는 원화로 환산했어요') : ''}${any('ended') ? T(' · 끝난 광고도 포함해요') : ''}</p>`
           : `<p class="empty">${T('{month} 입력된 성과가 없어요', { month: monthWord() })}</p>`}
       </section>`;
   }
@@ -444,10 +467,21 @@
               <div class="team-top"><strong>${esc(t.name)}</strong><span class="muted">${T('광고 {n}개', { n: list.length })}</span></div>
               <div class="team-money"><span>${won(b.spend)}</span><span class="muted"> / ${won(b.budget)}</span></div>
               ${bar(b.budget ? b.spend / b.budget : 0)}
+              ${teamResult(ads.filter((ad) => ad.team === t.id))}
               <div class="dots">${GRADE_KEYS.filter((k) => c[k]).map((k) => `<span class="dot dot-${k}"><i></i>${GRADES[k].short} ${c[k]}</span>`).join('')}</div>
             </button>`;
         }).join('')}</div>
       </section>`;
+  }
+
+  // 팀 카드의 성과 한 줄: 판매 광고는 매출·ROAS, 유입 광고는 상담 건수·1건당 광고비
+  function teamResult(ads) {
+    const r = resultsOf(ads);
+    const parts = [
+      r.hasSales && `${T('매출 {x}', { x: won(r.revenue) })} · ${r.roas != null ? T('ROAS {r}배', { r: r.roas.toFixed(2) }) : 'ROAS -'}`,
+      r.hasTraffic && `${T('상담 {n}건', { n: num(r.leads) })} · ${r.perLead != null ? T('1건당 {x}', { x: won(r.perLead) }) : T('1건당 -')}`,
+    ].filter(Boolean);
+    return parts.length ? `<div class="team-result">${parts.map((x) => `<span>${x}</span>`).join('')}</div>` : '';
   }
 
   function reminderPanel() {
