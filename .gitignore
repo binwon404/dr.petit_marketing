@@ -1,15 +1,5 @@
+# 이 폴더(public-site/)만 공개 저장소 — 누구나 볼 수 있음
+# 내부 파일(CLAUDE.md·개발기록·DB 설계·가이드 원본 등)은 이 폴더 바깥(마케팅보드/)에 둔다
 .DS_Store
 .env
 .env.*
-
-# 내부용 — 공개 저장소에 올리지 않음
-CLAUDE.md
-개발기록.md
-개발기록_그림/
-구조_가이드.html
-사용상세_가이드.html
-.mcp.json
-supabase/
-
-# 가이드를 다시 만들 때 쓰는 재료 (그림·조립 스크립트)
-guide-src/
